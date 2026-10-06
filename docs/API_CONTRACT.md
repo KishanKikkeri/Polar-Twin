@@ -1,4 +1,4 @@
-# POLARTWIN API Contract & Data Architecture
+# POLARTWIN API Contract & Data Architecture (v1)
 
 ## Overview
 
@@ -69,71 +69,84 @@ The POLARTWIN backend provides the authoritative data foundation and Digital Twi
 
 ### 2.2 Stations List
 - **Path:** `GET /api/v1/stations`
-- **Response:**
+- **Response (Array of Stations):**
   ```json
-  {
-    "items": [
-      {
-        "id": "bharati",
-        "name": "Bharati Research Station",
-        "short_name": "Bharati",
-        "location": "Larsemann Hills, Prydz Bay, East Antarctica",
-        "region": "North Grovnes Island, between Thala Fjord and Quilty Bay",
-        "operator": "National Centre for Polar and Ocean Research (NCPOR)",
-        "established_year": 2012,
-        "coordinates": { "lat": -69.4082, "lon": 76.1874 }
-      },
-      {
-        "id": "maitri",
-        "name": "Maitri Research Station",
-        "short_name": "Maitri",
-        "location": "Schirmacher Oasis, Queen Maud Land, Antarctica",
-        "region": "Central Dronning Maud Land",
-        "operator": "National Centre for Polar and Ocean Research (NCPOR)",
-        "established_year": 1989,
-        "coordinates": { "lat": -70.7653, "lon": 11.7358 }
-      }
-    ],
-    "count": 2
-  }
+  [
+    {
+      "id": "bharati",
+      "station_id": "bharati",
+      "name": "Bharati Research Station",
+      "station_name": "Bharati Research Station",
+      "short_name": "Bharati",
+      "status": "operational",
+      "location": "Larsemann Hills, Prydz Bay, East Antarctica",
+      "region": "North Grovnes Island, between Thala Fjord and Quilty Bay",
+      "operator": "National Centre for Polar and Ocean Research (NCPOR)",
+      "established_year": 2012,
+      "latitude": -69.4082,
+      "longitude": 76.1874,
+      "coordinates": { "lat": -69.4082, "lon": 76.1874 }
+    },
+    {
+      "id": "maitri",
+      "station_id": "maitri",
+      "name": "Maitri Research Station",
+      "station_name": "Maitri Research Station",
+      "short_name": "Maitri",
+      "status": "operational",
+      "location": "Schirmacher Oasis, Queen Maud Land, Antarctica",
+      "region": "Central Dronning Maud Land",
+      "operator": "National Centre for Polar and Ocean Research (NCPOR)",
+      "established_year": 1989,
+      "latitude": -70.7653,
+      "longitude": 11.7358,
+      "coordinates": { "lat": -70.7653, "lon": 11.7358 }
+    }
+  ]
   ```
 
 ### 2.3 Station Detail
 - **Path:** `GET /api/v1/stations/{station_id}`
 - **Parameters:** `station_id` (e.g. `maitri`, `bharati`)
-- **Response:** Summary fields plus `purpose`, `buildings` (with codes matching frontend 3D objects), `asset_count`, `channel_count`, and `updated_at`.
+- **Response:** Station metadata including `station_id`, `station_name`, `status`, `coordinates`, `buildings` (with codes matching frontend 3D objects), `asset_count`, `channel_count`, and `updated_at`.
 
 ### 2.4 Digital Twin Overview
 - **Path:** `GET /api/v1/stations/{station_id}/overview`
 - **Query Parameters:**
   - `as_of` *(optional, ISO 8601 aware datetime)*: Replay the twin state as it was at that exact time.
 - **Response Structure:**
-  - `station`: Station summary
-  - `as_of`: Evaluation timestamp
-  - `condition`: Overall station condition (`NORMAL`, `WARNING`, `CRITICAL`, `UNKNOWN`)
+  - `station_id`: Station ID string (`"maitri"`)
+  - `station_name`: Full station name
+  - `status`: `"operational"`, `"degraded"`, `"offline"`, or `"unknown"`
+  - `last_updated`: Latest observation timestamp (ISO 8601 UTC)
+  - `data_status`: `"REAL_OBSERVATION"` or `"SYNTHETIC"`
+  - `domains`:
+    - `environment`: `{ air_temperature, wind, indoor_temperature, co2_ppm }`
+    - `energy`: `{ total_load_kw, voltage_v, frequency_hz, fuel_storage_pct }`
+    - `logistics`: `{ fuel_days_of_autonomy, water_storage_pct, waste_storage_pct }`
+    - `infrastructure`: `{ boiler_supply_temp_c, satellite_latency_ms, satellite_bandwidth_mbps }`
+  - `active_alerts`: List of active threshold alerts (`[ { alert_id, source, severity, title, description, created_at, status } ]`)
+  - `risk`: `{ score, severity, contributing_factors, trend }`
+  - `condition`: Station condition (`NORMAL`, `WARNING`, `CRITICAL`, `UNKNOWN`)
   - `completeness`: `COMPLETE`, `PARTIAL`, `NO_DATA`
   - `contains_real_observations`: Boolean (`false` for prototype)
   - `data_notice`: Explanatory notice when real observations are absent
   - `counts`: Aggregate totals by freshness, condition, quality, and provenance
-  - `systems`: System summaries (Electricity, Fuel, Water, Heating, Comms, Waste, Environment, Weather)
-  - `assets`: Asset list with each channel's:
-    - `freshness`: `FRESH`, `STALE`, `MISSING`
-    - `condition`: Evaluated against engineering thresholds
-    - `latest`: Most recent observed reading
-    - `last_valid`: Most recent non-MISSING observed reading
-    - `age_seconds`: Age relative to `as_of`
-    - `next_prediction`: Earliest forecast beyond `as_of` (if available)
+  - `systems`: System summaries
+  - `assets`: Asset list with channels, freshness (`FRESH`, `STALE`, `MISSING`), latest value, and predictions
 
 ### 2.5 Station Assets
 - **Path:** `GET /api/v1/stations/{station_id}/assets`
 - **Query Parameters:**
   - `system` *(optional)*: Filter by `ELECTRICITY`, `FUEL`, `WATER`, `HEATING`, `COMMUNICATION`, `WASTE`, `ENVIRONMENT`, `WEATHER`
   - `building_id` *(optional)*: Filter by parent building
-- **Response:** List of assets with their declared telemetry channels, units, and threshold configs.
+- **Response:** Array of `Asset` objects. Each asset's `building_id` matches the 3D scene building code (e.g. `"power-house"`, `"fuel-farm"`) so the 3D scene and Asset Inspector link seamlessly.
 
 ### 2.6 Raw Telemetry Query
 - **Path:** `GET /api/v1/stations/{station_id}/telemetry`
 - **Query Parameters:**
+  - `range` *(optional)*: `1h`, `6h`, `24h`, `7d`, `30d` (anchored to observed timeline)
+  - `parameter` *(optional)*: Metric name alias (e.g. `air_temp_c`)
   - `asset_id` *(optional)*: e.g. `maitri.dg-1`
   - `metric` *(optional)*: e.g. `load_kw`
   - `provenance` *(optional, repeatable)*: e.g. `?provenance=SYNTHETIC&provenance=PREDICTED`
@@ -142,3 +155,4 @@ The POLARTWIN backend provides the authoritative data foundation and Digital Twi
   - `order` *(optional)*: `desc` (default) or `asc`
   - `limit` *(optional)*: default 500, max 5000
   - `offset` *(optional)*: default 0
+- **Response:** Array of `TelemetryReading` / `TelemetryPoint` objects.

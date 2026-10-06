@@ -36,6 +36,8 @@ from app.repositories.topology import AssetRepository
 from app.schemas.overview import (
     AssetState,
     ChannelState,
+    OverviewAlert,
+    OverviewRisk,
     ReadingValue,
     StateCounts,
     StationOverview,
@@ -122,7 +124,7 @@ class TwinService:
                 name=asset.name,
                 asset_type=asset.asset_type,
                 system=asset.system,
-                building_id=asset.building_id,
+                building_id=asset.building_id.split(".")[-1] if asset.building_id else None,
                 condition=rollup_condition(c.condition for c in channels),
                 completeness=rollup_completeness(c.freshness for c in channels),
                 channels=channels,
@@ -160,15 +162,108 @@ class TwinService:
                 "SYNTHETIC/DERIVED development data and do not reflect actual station conditions."
             )
 
+        overall_condition = rollup_condition(c.condition for c in all_channels)
+        overall_completeness = rollup_completeness(c.freshness for c in all_channels)
+
+        # Build frontend-specific integration fields
+        # 1. status
+        status_map = {
+            Condition.NORMAL: "operational",
+            Condition.WARNING: "degraded",
+            Condition.CRITICAL: "degraded",
+            Condition.UNKNOWN: "unknown",
+        }
+        frontend_status = status_map.get(overall_condition, "unknown")
+
+        # 2. last_updated
+        timestamps = [c.latest.observed_at for c in all_channels if c.latest]
+        last_updated = max(timestamps) if timestamps else as_of
+
+        # 3. data_status
+        data_status = "REAL_OBSERVATION" if contains_real else "SYNTHETIC"
+
+        # 4. domains
+        # Quick lookup for latest values
+        val_map: dict[str, float | None] = {}
+        for c in all_channels:
+            val_map[c.channel_id] = c.latest.value if c.latest else None
+
+        env_domain = {
+            "air_temperature": val_map.get(f"{station_id}.aws-1.air_temp_c"),
+            "wind": val_map.get(f"{station_id}.aws-1.wind_speed_ms"),
+            "indoor_temperature": val_map.get(f"{station_id}.indoor-env-main.air_temp_c"),
+            "co2_ppm": val_map.get(f"{station_id}.indoor-env-main.co2_ppm"),
+        }
+        energy_domain = {
+            "total_load_kw": val_map.get(f"{station_id}.power-bus.station_load_kw"),
+            "voltage_v": val_map.get(f"{station_id}.power-bus.voltage_v"),
+            "frequency_hz": val_map.get(f"{station_id}.power-bus.frequency_hz"),
+            "fuel_storage_pct": val_map.get(f"{station_id}.tank-a.level_pct"),
+        }
+        logistics_domain = {
+            "fuel_days_of_autonomy": val_map.get(f"{station_id}.fuel-inventory.days_of_autonomy_d"),
+            "water_storage_pct": val_map.get(f"{station_id}.water-tank.level_pct"),
+            "waste_storage_pct": val_map.get(f"{station_id}.incinerator-1.storage_pct") or val_map.get(f"{station_id}.wwtp-1.buffer_tank_pct"),
+        }
+        infra_domain = {
+            "boiler_supply_temp_c": val_map.get(f"{station_id}.boiler-1.supply_temp_c") or val_map.get(f"{station_id}.heat-exchanger-1.supply_temp_c"),
+            "satellite_latency_ms": val_map.get(f"{station_id}.satcom-1.latency_ms"),
+            "satellite_bandwidth_mbps": val_map.get(f"{station_id}.satcom-1.bandwidth_mbps"),
+        }
+        domains = {
+            "environment": env_domain,
+            "energy": energy_domain,
+            "logistics": logistics_domain,
+            "infrastructure": infra_domain,
+        }
+
+        # 5. active_alerts
+        active_alerts: list[OverviewAlert] = []
+        for a in asset_states:
+            for c in a.channels:
+                if c.condition in (Condition.WARNING, Condition.CRITICAL):
+                    active_alerts.append(
+                        OverviewAlert(
+                            alert_id=f"alt-{c.channel_id}",
+                            station_id=station_id,
+                            source=a.name,
+                            severity="CRITICAL" if c.condition == Condition.CRITICAL else "WARNING",
+                            title=f"{a.name} — {c.metric.replace('_', ' ').upper()}",
+                            description=f"Current value {c.latest.value if c.latest else '—'} {c.unit} triggered {c.condition.value} threshold",
+                            created_at=c.latest.observed_at if c.latest else as_of,
+                            recommended_action=f"Inspect {a.name} in {a.building_id or 'station area'}",
+                        )
+                    )
+
+        # 6. risk
+        if overall_condition == Condition.NORMAL:
+            risk = OverviewRisk(score=12.0, severity="low", contributing_factors=[], trend="stable")
+        elif overall_condition == Condition.WARNING:
+            factors = [alt.title for alt in active_alerts]
+            risk = OverviewRisk(score=45.0, severity="medium", contributing_factors=factors, trend="elevated")
+        elif overall_condition == Condition.CRITICAL:
+            factors = [alt.title for alt in active_alerts]
+            risk = OverviewRisk(score=82.0, severity="high", contributing_factors=factors, trend="critical")
+        else:
+            risk = OverviewRisk(score=None, severity="unknown", contributing_factors=[], trend=None)
+
         return StationOverview(
             station=to_summary(station),
             as_of=as_of,
             generated_at=generated_at,
-            condition=rollup_condition(c.condition for c in all_channels),
-            completeness=rollup_completeness(c.freshness for c in all_channels),
+            condition=overall_condition,
+            completeness=overall_completeness,
             contains_real_observations=contains_real,
             data_notice=notice,
             counts=counts,
             systems=systems,
             assets=asset_states,
+            station_id=station.id,
+            station_name=station.name,
+            status=frontend_status,
+            last_updated=last_updated,
+            data_status=data_status,
+            domains=domains,
+            active_alerts=active_alerts,
+            risk=risk,
         )

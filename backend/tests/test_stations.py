@@ -1,18 +1,21 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.schemas.station import AssetListResponse, StationDetail, StationListResponse
+from app.schemas.station import AssetSchema, StationDetail, StationSummary
 
 
 def test_list_stations_returns_both(client: TestClient):
     r = client.get("/api/v1/stations")
     assert r.status_code == 200
-    body = StationListResponse.model_validate(r.json())
-    assert body.count == 2
-    assert {s.id for s in body.items} == {"maitri", "bharati"}
-    maitri = next(s for s in body.items if s.id == "maitri")
+    items = [StationSummary.model_validate(s) for s in r.json()]
+    assert len(items) == 2
+    assert {s.id for s in items} == {"maitri", "bharati"}
+    assert {s.station_id for s in items} == {"maitri", "bharati"}
+    maitri = next(s for s in items if s.id == "maitri")
     assert maitri.coordinates.lat == pytest.approx(-70.7653)
     assert maitri.coordinates.lon == pytest.approx(11.7358)
+    assert maitri.latitude == pytest.approx(-70.7653)
+    assert maitri.longitude == pytest.approx(11.7358)
 
 
 @pytest.mark.parametrize("station_id", ["maitri", "bharati"])
@@ -21,6 +24,8 @@ def test_station_detail(client: TestClient, station_id: str):
     assert r.status_code == 200
     detail = StationDetail.model_validate(r.json())
     assert detail.id == station_id
+    assert detail.station_id == station_id
+    assert detail.station_name == detail.name
     assert detail.asset_count > 0 and detail.channel_count > 0
     codes = {b.code for b in detail.buildings}
     # Building codes match the frontend scene object ids.
@@ -55,12 +60,12 @@ def test_unknown_route_uses_error_envelope(client: TestClient):
 def test_assets_have_channels(client: TestClient):
     r = client.get("/api/v1/stations/bharati/assets")
     assert r.status_code == 200
-    body = AssetListResponse.model_validate(r.json())
-    assert body.station_id == "bharati"
-    assert body.count == len(body.items) > 0
-    for a in body.items:
+    items = [AssetSchema.model_validate(a) for a in r.json()]
+    assert len(items) > 0
+    for a in items:
         assert a.station_id == "bharati"
         assert a.id.startswith("bharati.")
+        assert a.asset_id == a.id
         assert a.channels, a.id
         for c in a.channels:
             assert c.stale_after_seconds >= c.expected_interval_seconds
@@ -68,14 +73,16 @@ def test_assets_have_channels(client: TestClient):
 
 
 def test_assets_filter_by_system(client: TestClient):
-    body = client.get("/api/v1/stations/maitri/assets", params={"system": "FUEL"}).json()
-    assert body["count"] == 4
-    assert {a["system"] for a in body["items"]} == {"FUEL"}
+    items = client.get("/api/v1/stations/maitri/assets", params={"system": "FUEL"}).json()
+    assert len(items) == 4
+    assert {a["system"] for a in items} == {"FUEL"}
 
 
 def test_assets_filter_by_building(client: TestClient):
-    body = client.get("/api/v1/stations/maitri/assets", params={"building_id": "maitri.fuel-farm"}).json()
-    assert {a["code"] for a in body["items"]} == {"tank-a", "tank-b", "tank-c", "fuel-inventory"}
+    items = client.get("/api/v1/stations/maitri/assets", params={"building_id": "maitri.fuel-farm"}).json()
+    assert {a["code"] for a in items} == {"tank-a", "tank-b", "tank-c", "fuel-inventory"}
+    # building_id on returned asset matches frontend 3D object code
+    assert all(a["building_id"] == "fuel-farm" for a in items)
 
 
 def test_assets_invalid_system_is_422(client: TestClient):

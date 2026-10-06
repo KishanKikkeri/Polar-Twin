@@ -8,11 +8,9 @@ from app.models import Station
 from app.repositories.topology import AssetRepository, StationRepository
 from app.schemas.common import Coordinates
 from app.schemas.station import (
-    AssetListResponse,
     AssetSchema,
     BuildingSchema,
     StationDetail,
-    StationListResponse,
     StationSummary,
 )
 
@@ -22,6 +20,7 @@ def to_summary(station: Station) -> StationSummary:
         id=station.id,
         name=station.name,
         short_name=station.short_name,
+        status="operational",
         location=station.location,
         region=station.region,
         operator=station.operator,
@@ -44,9 +43,8 @@ class StationService:
             )
         return station
 
-    def list_stations(self) -> StationListResponse:
-        items = [to_summary(s) for s in self.stations.list()]
-        return StationListResponse(items=items, count=len(items))
+    def list_stations(self) -> list[StationSummary]:
+        return [to_summary(s) for s in self.stations.list()]
 
     def get_station(self, station_id: str) -> StationDetail:
         self.require_station(station_id)
@@ -75,8 +73,29 @@ class StationService:
 
     def list_assets(
         self, station_id: str, *, system: SystemType | None = None, building_id: str | None = None
-    ) -> AssetListResponse:
+    ) -> list[AssetSchema]:
         self.require_station(station_id)
         assets = self.assets.list_for_station(station_id, system=system, building_id=building_id)
-        items = [AssetSchema.model_validate(a) for a in assets]
-        return AssetListResponse(station_id=station_id, items=items, count=len(items))
+        items = []
+        for a in assets:
+            # Match 3D scene objects by using the building's code (e.g. 'power-house')
+            # rather than '<station>.<code>' so groupAssetsByObject links seamlessly.
+            scene_building_id = a.building_id.split(".")[-1] if a.building_id else None
+            items.append(
+                AssetSchema(
+                    id=a.id,
+                    asset_id=a.id,
+                    station_id=a.station_id,
+                    building_id=scene_building_id,
+                    code=a.code,
+                    name=a.name,
+                    asset_type=a.asset_type,
+                    system=a.system,
+                    description=a.description,
+                    status="operational",
+                    health=95.0,
+                    criticality="high" if a.system in (SystemType.ELECTRICITY, SystemType.FUEL, SystemType.HEATING) else "medium",
+                    channels=[c for c in a.channels],
+                )
+            )
+        return items

@@ -20,6 +20,17 @@ def test_overview_validates_against_schema(client: TestClient):
     assert overview.condition in Condition
     assert overview.completeness in DataCompleteness
 
+    # Frontend integration fields
+    assert overview.station_id == "maitri"
+    assert overview.station_name == "Maitri Research Station"
+    assert overview.status in ("operational", "degraded", "unknown")
+    assert overview.data_status in ("SYNTHETIC", "REAL_OBSERVATION")
+    assert "environment" in overview.domains
+    assert "energy" in overview.domains
+    assert "logistics" in overview.domains
+    assert "infrastructure" in overview.domains
+    assert overview.risk.severity in ("low", "medium", "high", "critical", "unknown")
+
 
 def test_overview_defaults_as_of_to_current_time(client: TestClient):
     r = client.get(URL.format("maitri"))

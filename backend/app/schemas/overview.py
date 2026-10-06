@@ -4,6 +4,8 @@ This is an *aggregated projection* over raw telemetry, computed at ``as_of``.
 It is never persisted back into the raw telemetry table.
 """
 
+from typing import Any
+
 from pydantic import AwareDatetime, Field
 
 from app.domain.enums import (
@@ -82,7 +84,27 @@ class StateCounts(ApiModel):
     by_provenance: dict[Provenance, int] = Field(description="Provenance of each channel's latest record (if any)")
 
 
+class OverviewAlert(ApiModel):
+    alert_id: str
+    station_id: str
+    source: str
+    severity: str = Field(description="INFO | WARNING | HIGH | CRITICAL")
+    title: str
+    description: str
+    created_at: AwareDatetime
+    status: str = "ACTIVE"
+    recommended_action: str | None = None
+
+
+class OverviewRisk(ApiModel):
+    score: float | None = None
+    severity: str = Field(default="low", description="low | medium | high | critical | unknown")
+    contributing_factors: list[str] = Field(default_factory=list)
+    trend: str | None = "stable"
+
+
 class StationOverview(ApiModel):
+    # Core digital twin fields
     station: StationSummary
     as_of: AwareDatetime = Field(description="Reference time used for freshness evaluation")
     generated_at: AwareDatetime
@@ -95,3 +117,16 @@ class StationOverview(ApiModel):
     counts: StateCounts
     systems: list[SystemSummary]
     assets: list[AssetState]
+
+    # Frontend integration fields (src/types/api.js contract)
+    station_id: str = Field(description="Station slug, e.g. 'maitri'")
+    station_name: str = Field(description="Station name")
+    status: str = Field(default="operational", description="operational | degraded | offline | unknown")
+    last_updated: AwareDatetime = Field(description="Latest data timestamp")
+    data_status: str = Field(description="SIMULATED | SYNTHETIC | REAL_OBSERVATION")
+    domains: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Domains payload: environment, energy, logistics, infrastructure",
+    )
+    active_alerts: list[OverviewAlert] = Field(default_factory=list)
+    risk: OverviewRisk = Field(default_factory=OverviewRisk)
