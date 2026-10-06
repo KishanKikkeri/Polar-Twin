@@ -1,0 +1,24 @@
+# Local development PostgreSQL service for POLARTWIN backend.
+# Run: docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: polartwin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: polartwin
+      POSTGRES_PASSWORD: polartwin
+      POSTGRES_DB: polartwin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polartwin -d polartwin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
