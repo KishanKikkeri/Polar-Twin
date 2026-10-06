@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #05080c;
+  color: #e8f4fb;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+canvas {
+  outline: none;
+  touch-action: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(63, 215, 255, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass {
+  background: rgba(10, 15, 22, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(159, 212, 234, 0.12);
+}
+
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(63, 215, 255, 0.18), 0 0 30px rgba(63, 215, 255, 0.08);
+}
+
+.tick {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.pulse-ring {
+  animation: pulse-ring 2.2s ease-out infinite;
+}
+
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.blink-dot {
+  animation: blink-dot 1.6s ease-in-out infinite;
+}
+
+/* =========================================================
+   MAITRI BLUEPRINT HUD
+   ========================================================= */
+.blueprint-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  overflow: hidden;
+  color: #c9f3ff;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  text-shadow: 0 0 8px rgba(63, 215, 255, .35);
+}
+
+.blueprint-frame {
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(63,215,255,.42);
+  box-shadow: inset 0 0 45px rgba(63,215,255,.045), 0 0 18px rgba(63,215,255,.05);
+  clip-path: polygon(0 0, 11% 0, 12% 1.4%, 88% 1.4%, 89% 0, 100% 0, 100% 22%, 99% 23%, 99% 77%, 100% 78%, 100% 100%, 89% 100%, 88% 98.5%, 12% 98.5%, 11% 100%, 0 100%, 0 78%, 1% 77%, 1% 23%, 0 22%);
+}
+.blueprint-frame:before, .blueprint-frame:after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(63,215,255,.8), transparent);
+}
+.blueprint-frame:before { top: 34px; }
+.blueprint-frame:after { bottom: 34px; }
+
+.blueprint-scanlines {
+  position: absolute; inset: 0;
+  opacity: .075;
+  background: repeating-linear-gradient(0deg, rgba(63,215,255,.7) 0 1px, transparent 1px 5px);
+  mix-blend-mode: screen;
+}
+.blueprint-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, transparent 38%, rgba(2,9,14,.62) 100%);
+}
+
+.blueprint-title-panel {
+  position: absolute;
+  top: 32px; left: 50%; transform: translateX(-50%);
+  width: min(58vw, 680px);
+  padding: 10px 24px 8px;
+  text-align: center;
+  border: 1px solid rgba(63,215,255,.55);
+  background: rgba(5,18,27,.34);
+  box-shadow: 0 0 25px rgba(63,215,255,.09), inset 0 0 18px rgba(63,215,255,.05);
+}
+.blueprint-title-panel h1 { margin: 2px 0 3px; font-size: clamp(15px, 1.65vw, 23px); letter-spacing: .08em; font-weight: 600; }
+.blueprint-kicker, .blueprint-subtitle { font-size: 7px; letter-spacing: .22em; opacity: .62; }
+.blueprint-subtitle { opacity: .48; }
+
+.blueprint-status-top { position: absolute; top: 42px; right: 32px; display: flex; gap: 15px; font-size: 8px; letter-spacing: .12em; opacity: .75; }
+.blueprint-status-top i { display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:#4ade80; box-shadow:0 0 9px #4ade80; }
+
+.blueprint-compass { position:absolute; top:92px; right:31px; width:92px; text-align:center; font-size:7px; opacity:.75; }
+.compass-ring { position:relative; width:52px; height:52px; margin:auto; border:1px solid rgba(63,215,255,.55); border-radius:50%; }
+.compass-ring:before { content:''; position:absolute; inset:7px; border:1px dashed rgba(63,215,255,.4); border-radius:50%; }
+.compass-ring b,.compass-ring span { position:absolute; font-size:7px; font-weight:500; }
+.compass-ring b:first-child{top:2px;left:23px}.compass-ring span:nth-child(2){right:3px;top:22px}.compass-ring b:nth-child(3){bottom:2px;left:23px}.compass-ring span:nth-child(4){left:3px;top:22px}
+.compass-ring i { position:absolute; width:1px; height:38px; left:25px; top:6px; background:#3fd7ff; transform:rotate(42deg); box-shadow:0 0 7px #3fd7ff; }
+.compass-coords { margin-top:4px; line-height:1.5; }
+
+.blueprint-callout { position:absolute; width:245px; display:flex; align-items:center; gap:0; }
+.blueprint-callout.left { left:38px; flex-direction:row; }
+.blueprint-callout.right { right:38px; flex-direction:row-reverse; }
+.blueprint-callout-box { min-width:190px; padding:7px 10px; border:1px solid rgba(63,215,255,.58); background:rgba(4,18,27,.58); box-shadow:inset 0 0 12px rgba(63,215,255,.05); }
+.blueprint-callout-title { font-size:10px; letter-spacing:.08em; font-weight:600; }
+.blueprint-callout-subtitle { margin-top:2px; font-size:7px; letter-spacing:.12em; opacity:.55; }
+.blueprint-callout-line { height:1px; flex:1; min-width:45px; opacity:.8; }
+.blueprint-target { position:absolute; width:7px; height:7px; border:1px solid #3fd7ff; border-radius:50%; box-shadow:0 0 10px #3fd7ff; }
+.callout-main{top:19%}.callout-power{top:42%}.callout-fuel{top:65%}.callout-water{top:43%}.callout-comms{top:23%}
+.callout-main .blueprint-target{right:-80px;top:40px}.callout-power .blueprint-target{right:-115px;top:20px}.callout-fuel .blueprint-target{right:-120px;top:12px}.callout-water .blueprint-target{left:-90px;top:20px}.callout-comms .blueprint-target{left:-75px;top:38px}
+
+.blueprint-legend { position:absolute; bottom:50px; width:245px; padding:10px 12px; border:1px solid rgba(63,215,255,.42); background:rgba(4,16,24,.54); font-size:8px; line-height:1.65; }
+.left-bottom{left:34px}.right-bottom{right:34px}
+.legend-heading { padding-bottom:5px; margin-bottom:4px; border-bottom:1px solid rgba(63,215,255,.3); font-size:10px; letter-spacing:.13em; }
+.legend-row { opacity:.72; }.legend-row b { display:inline-block; width:5px; height:5px; margin-right:7px; border:1px solid #3fd7ff; box-shadow:0 0 5px #3fd7ff; }
+
+.blueprint-zoom { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); width:290px; padding:8px 16px 10px; border:1px solid rgba(63,215,255,.55); background:rgba(4,17,25,.72); text-align:center; }
+.zoom-label { font-size:10px; letter-spacing:.12em; margin-bottom:7px; }.zoom-controls{display:flex;align-items:center;gap:9px}.zoom-controls button{width:20px;height:20px;color:#9de8ff;background:rgba(63,215,255,.05);border:1px solid rgba(63,215,255,.4);font:inherit}.zoom-track{height:2px;flex:1;background:rgba(63,215,255,.32);position:relative}.zoom-track span{position:absolute;left:55%;top:-4px;width:8px;height:10px;background:#3fd7ff;box-shadow:0 0 10px #3fd7ff}
+.blueprint-corner-readout { position:absolute; left:35px; bottom:30px; font-size:7px; line-height:1.55; letter-spacing:.08em; opacity:.38; }
+
+@media (max-width: 800px) {
+  .blueprint-callout { width:180px; }.blueprint-callout-box{min-width:145px}.blueprint-callout-title{font-size:8px}.blueprint-callout-subtitle{font-size:6px}.blueprint-legend{width:190px;font-size:7px}.right-bottom{display:none}.blueprint-title-panel{width:65vw}.blueprint-status-top{display:none}
+}

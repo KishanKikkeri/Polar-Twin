@@ -1,0 +1,272 @@
+// Maitri Research Station configuration.
+//
+// Layout below is deliberately traced from the provided aerial reference
+// photograph of the actual station footprint (orange container cluster by
+// the frozen lake, a light workshop building, the bent/dogleg elevated main
+// building with the Indian flag near its corner, and the turquoise
+// meltwater pond beside it) rather than an arbitrary arrangement. Auxiliary
+// infrastructure not visible in that particular photo (fuel farm, helipads,
+// summer camp, incinerator) is placed at plausible surrounding positions so
+// the station still reads as a complete site.
+
+export const maitriMeta = {
+  id: 'maitri',
+  name: 'Maitri Research Station',
+  shortName: 'Maitri',
+  location: 'Schirmacher Oasis, Queen Maud Land, Antarctica',
+  region: 'Central Dronning Maud Land',
+  operator: 'National Centre for Polar and Ocean Research (NCPOR)',
+  purpose:
+    'Year-round scientific research station supporting glaciology, atmospheric science, biology and geophysics research, and logistics for India\u2019s Antarctic programme.',
+  established: 1989,
+  // approx. published coordinates (70°45'55"S 11°44'09"E)
+  coords: { lat: -70.7653, lon: 11.7358 },
+  mapImage: '/assets/maps/maitri-map.png',
+  mapAttribution: 'Aerial reference photograph of the Maitri station footprint.',
+  thumbnail: '/assets/stations/maitri.jpg',
+}
+
+export const maitriObjects = [
+  {
+    id: 'main-building',
+    name: 'Main Station Building',
+    subtitle: 'Command, quarters & mess — elevated dogleg block',
+    type: 'building',
+    dashboardType: 'main-building',
+    layer: 'buildings',
+    // Anchor at the building's corner; `path` (offsets from position) traces
+    // the real bent footprint: a long diagonal wing down to the lower-left
+    // and a shorter wing running out to the right, matching the photo.
+    position: [9, 0, -10.8],
+    path: [
+      [-15.3, 29.6],
+      [0, 0],
+      [15.6, 1.8],
+      [31.2, 0],
+    ],
+    size: [34, 4.2, 7],
+    color: '#c7ced2',
+    icon: '🏠',
+  },
+  {
+    id: 'container-yard',
+    name: 'Container Yard',
+    subtitle: 'Orange containerized modules — storage & auxiliary units',
+    type: 'container',
+    dashboardType: 'main-building',
+    layer: 'buildings',
+    position: [-25, 0, -13.5],
+    size: [3, 2.6, 6],
+    color: '#c1592f',
+    icon: '📦',
+  },
+  {
+    id: 'container-annex',
+    name: 'Container Annex',
+    subtitle: 'Additional storage container',
+    type: 'container',
+    dashboardType: 'main-building',
+    layer: 'buildings',
+    position: [-10.8, 0, 12.6],
+    size: [2.6, 2.4, 5],
+    color: '#c1592f',
+    icon: '📦',
+  },
+  {
+    id: 'workshop',
+    name: 'Workshop',
+    subtitle: 'Engineering & maintenance building',
+    type: 'building',
+    dashboardType: 'main-building',
+    layer: 'buildings',
+    position: [-15, 0, -16],
+    size: [8, 3, 6],
+    color: '#d9d3c2',
+    icon: '🔧',
+  },
+  {
+    id: 'laboratory',
+    name: 'Laboratory',
+    subtitle: 'Science & analysis wing',
+    type: 'lab',
+    dashboardType: 'laboratory',
+    layer: 'buildings',
+    position: [0, 0, -20],
+    size: [9, 3.2, 6],
+    color: '#8a97a3',
+    icon: '🧪',
+  },
+  {
+    id: 'power-house',
+    name: 'Power House',
+    subtitle: 'Generators & switchgear — beside the meltwater pond',
+    type: 'electricity',
+    dashboardType: 'electricity',
+    layer: 'electricity',
+    position: [10, 0, -20],
+    size: [6, 3, 5],
+    color: '#8a97a3',
+    icon: '⚡',
+  },
+  {
+    id: 'heating-plant',
+    name: 'Heating Plant',
+    subtitle: 'Central heating system',
+    type: 'heating',
+    dashboardType: 'heating',
+    layer: 'heating',
+    position: [18, 0, -22],
+    size: [3.8, 2.6, 3.8],
+    color: '#a3572e',
+    icon: '🔥',
+  },
+  {
+    id: 'comms-tower',
+    name: 'Communication Mast',
+    subtitle: 'Satellite & radio link — near the main building corner',
+    type: 'comms',
+    dashboardType: 'communication',
+    layer: 'communication',
+    position: [15, 0, -4],
+    size: [1, 13, 1],
+    color: '#d8dee2',
+    icon: '📡',
+  },
+  {
+    id: 'water-pump-house',
+    name: 'Lake Water Pump House',
+    subtitle: 'Freshwater intake at the frozen lake edge',
+    type: 'water',
+    dashboardType: 'water',
+    layer: 'water',
+    position: [-34, 0, -18],
+    size: [5, 2.8, 4],
+    color: '#7fb3c7',
+    icon: '💧',
+  },
+  {
+    id: 'fuel-farm',
+    name: 'Fuel Farm',
+    subtitle: 'Bulk fuel storage',
+    type: 'fuel',
+    dashboardType: 'fuel',
+    layer: 'fuel',
+    position: [-32, 0, 14],
+    size: [3.2, 5, 3.2],
+    color: '#b8c4cc',
+    icon: '⛽',
+  },
+  {
+    id: 'fuel-station',
+    name: 'Fuel Station',
+    subtitle: 'Dispensing point',
+    type: 'fuel',
+    dashboardType: 'fuel',
+    layer: 'fuel',
+    position: [-26, 0, 16],
+    size: [2.4, 2.4, 2.4],
+    color: '#b8c4cc',
+    icon: '⛽',
+  },
+  {
+    id: 'summer-camp',
+    name: 'Summer Camp',
+    subtitle: 'Seasonal accommodation',
+    type: 'building',
+    dashboardType: 'main-building',
+    layer: 'buildings',
+    position: [40, 0, -12],
+    size: [16, 3, 6],
+    color: '#96a3ad',
+    icon: '⛺',
+  },
+  {
+    id: 'incinerator',
+    name: 'Waste / Incinerator Area',
+    subtitle: 'Waste processing',
+    type: 'waste',
+    dashboardType: 'waste',
+    layer: 'waste',
+    position: [22, 0, 20],
+    size: [6, 3, 5],
+    color: '#9a8672',
+    icon: '♻️',
+  },
+  {
+    id: 'helipad-1',
+    name: 'Helipad 1',
+    subtitle: 'Primary landing pad',
+    type: 'pad',
+    dashboardType: 'main-building',
+    layer: 'roads',
+    position: [44, 0, 18],
+    size: [9, 0.1, 9],
+    color: '#c94f4f',
+    icon: '🚁',
+  },
+  {
+    id: 'helipad-2',
+    name: 'Helipad 2',
+    subtitle: 'Secondary landing pad',
+    type: 'pad',
+    dashboardType: 'main-building',
+    layer: 'roads',
+    position: [46, 0, -22],
+    size: [9, 0.1, 9],
+    color: '#c94f4f',
+    icon: '🚁',
+  },
+]
+
+export const maitriRoadPaths = [
+  [[-25, -13.5], [-15, -16], [9, -10.8], [24.6, -9], [40.2, -10.8]],
+  [[9, -10.8], [-3, 2], [-10.8, 12.6]],
+  [[10, -20], [0, -20], [-15, -16]],
+  [[-34, -18], [-25, -13.5]],
+  [[-32, 14], [-25, -13.5]],
+  [[40.2, -10.8], [40, -12], [44, 18]],
+  [[40, -12], [46, -22]],
+]
+
+export const maitriAlerts = [
+  {
+    id: 'mtr-a1',
+    level: 'warn',
+    objectId: 'fuel-farm',
+    title: 'FUEL CONSUMPTION HIGH',
+    message: 'Fuel Farm consumption is 14% higher than the weekly average.',
+  },
+  {
+    id: 'mtr-a2',
+    level: 'normal',
+    objectId: 'power-house',
+    title: 'POWER SYSTEM NORMAL',
+    message: 'All generators operating within normal parameters.',
+  },
+  {
+    id: 'mtr-a3',
+    level: 'warn',
+    objectId: 'water-pump-house',
+    title: 'WATER PUMP MAINTENANCE DUE',
+    message: 'Scheduled maintenance window approaching in 3 days.',
+  },
+]
+
+// Ground-plane dressing matched to the reference photo: a large pale frozen
+// lake to the upper-left, a turquoise summer meltwater pond beside the main
+// building, and a stack of supply drums near the lake shore.
+export const maitriTerrain = {
+  groundImage: '/assets/maps/maitri-map.png',
+  rockPatches: [
+    [-30, -25, 22, 0.5],
+    [5, -20, 16, 1.0],
+    [30, 10, 18, 0.3],
+    [-5, 25, 20, 1.4],
+    [45, -20, 14, 0.8],
+  ],
+  water: [
+    { position: [-34, -21], radius: 14, color: '#d7e6ec', style: 'frozen' },
+    { position: [16, -16], radius: 9, color: '#3ea88f', style: 'melt' },
+  ],
+  decor: [{ type: 'drums', position: [-40, -32] }],
+}
