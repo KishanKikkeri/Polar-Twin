@@ -279,3 +279,13 @@ test('asset status tones', () => {
   assert.equal(describeAssetStatus('operational').tone, 'normal')
   assert.equal(describeAssetStatus('???').tone, 'unknown')
 })
+
+test('HUD badge never says LIVE / STABLE without a backend', () => {
+  const down = buildTwinView({ stationId: 'maitri', connection: 'unavailable', station: null, overview: null, assets: null, errors: {}, fetchedAt: NOW, retained: false })
+  assert.equal(down.badge.dataLabel, 'SIMULATED · NO BACKEND')
+  assert.equal(down.badge.linkLabel, 'BACKEND UNAVAILABLE')
+  const up = buildTwinView({ stationId: 'maitri', connection: 'connected', station: null, overview: overview(), assets: [], errors: {}, fetchedAt: NOW, retained: false }, { now: NOW })
+  assert.equal(up.badge.dataLabel, 'BACKEND · SIMULATED')
+  assert.equal(up.badge.linkLabel, 'BACKEND CONNECTED')
+  assert.doesNotMatch(JSON.stringify([down.badge, up.badge]), /LIVE|STABLE/)
+})

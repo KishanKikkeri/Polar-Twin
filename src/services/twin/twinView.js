@@ -45,6 +45,19 @@ export function describeConnection(twin, { loading = false } = {}) {
   return { state: 'unavailable', label: 'SIMULATED — Backend unavailable', detail: 'No backend data; local simulation is shown.', tone: 'warn' }
 }
 
+// Short labels for decorative HUD chrome that previously hard-coded "LIVE" /
+// "LINK: STABLE".
+function describeBadge(connection, provenance) {
+  if (connection.state === 'loading') return { dataLabel: 'CHECKING BACKEND', linkLabel: 'CHECKING' }
+  if (provenance) {
+    return {
+      dataLabel: `BACKEND · ${provenance.label}`,
+      linkLabel: connection.state === 'connected' ? 'BACKEND CONNECTED' : 'BACKEND UNREACHABLE',
+    }
+  }
+  return { dataLabel: 'SIMULATED · NO BACKEND', linkLabel: connection.state === 'partial' ? 'PARTIAL' : 'BACKEND UNAVAILABLE' }
+}
+
 const DOMAIN_KEYS = ['environment', 'energy', 'logistics', 'infrastructure']
 
 /**
@@ -114,6 +127,7 @@ export function buildTwinView(twin, { now = Date.now(), loading = false, staleAf
       alertsOrigin: 'local-simulated',
       alerts: localAlerts.map(adaptLocalAlert),
       headline: { label: 'STATUS UNKNOWN', tone: 'unknown', reason: 'No backend overview' },
+      badge: describeBadge(connection, null),
     }
   }
 
@@ -139,5 +153,6 @@ export function buildTwinView(twin, { now = Date.now(), loading = false, staleAf
     alertsOrigin: 'backend',
     alerts,
     headline: deriveHeadline(overview.status, freshness),
+    badge: describeBadge(connection, provenance),
   }
 }

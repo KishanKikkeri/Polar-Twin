@@ -19,7 +19,7 @@ function Callout({ className = '', side = 'left', title, subtitle, target }) {
   )
 }
 
-export default function BlueprintHUD({ stationName = 'Maitri', objectCount = 0 }) {
+export default function BlueprintHUD({ stationName = 'Maitri', objectCount = 0, dataLabel = 'SIMULATED', linkLabel = 'UNKNOWN' }) {
   const [time, setTime] = useState(new Date())
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -34,13 +34,13 @@ export default function BlueprintHUD({ stationName = 'Maitri', objectCount = 0 }
       <div className="blueprint-vignette" />
 
       <div className="blueprint-title-panel">
-        <span className="blueprint-kicker">POLAR DIGITAL TWIN // LIVE ORBITAL VIEW</span>
+        <span className="blueprint-kicker">POLAR DIGITAL TWIN // ORBITAL VIEW</span>
         <h1>{stationName.toUpperCase()} STATION — COMPLETE BLUEPRINT MODEL</h1>
         <span className="blueprint-subtitle">HOLOGRAPHIC SITE RECONSTRUCTION · MULTI-LAYER INFRASTRUCTURE MAP</span>
       </div>
 
       <div className="blueprint-status-top">
-        <span><i /> LIVE</span>
+        <span><i /> {dataLabel}</span>
         <span>OBJECTS {String(objectCount).padStart(2, '0')}</span>
         <span>{time.toISOString().slice(0, 19).replace('T', ' ') }Z</span>
       </div>
@@ -79,7 +79,7 @@ export default function BlueprintHUD({ stationName = 'Maitri', objectCount = 0 }
         <div className="zoom-controls"><button>-</button><div className="zoom-track"><span /></div><button>+</button></div>
       </div>
 
-      <div className="blueprint-corner-readout">SYS / MAITRI-01<br />LAT -70.7653 · LON 11.7358<br />MODE: 3D HOLOGRAM<br />LINK: STABLE</div>
+      <div className="blueprint-corner-readout">SYS / MAITRI-01<br />LAT -70.7653 · LON 11.7358<br />MODE: 3D HOLOGRAM<br />LINK: {linkLabel}</div>
     </div>
   )
 }
