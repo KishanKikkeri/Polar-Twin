@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function InfoPanel({ open, onClose, meta }) {
+import { formatValue } from '../../services/twin/formatters.js'
+
+export default function InfoPanel({ open, onClose, meta, backendStation, connection }) {
   if (!meta) return null
   return (
     <AnimatePresence>
@@ -39,8 +41,22 @@ export default function InfoPanel({ open, onClose, meta }) {
                 <dd className="text-ice-100">{meta.location}</dd>
               </div>
               <div>
-                <dt className="text-[11px] uppercase tracking-wide text-ice-300/50">Coordinates</dt>
+                <dt className="text-[11px] uppercase tracking-wide text-ice-300/50">Coordinates (station config)</dt>
                 <dd className="text-ice-100 tick">{meta.coords.lat.toFixed(4)}°, {meta.coords.lon.toFixed(4)}°</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-ice-300/50">Backend station record</dt>
+                {backendStation ? (
+                  <dd className="text-ice-100 text-xs space-y-0.5">
+                    <div>Status: <b>{formatValue(backendStation.status).toUpperCase()}</b></div>
+                    <div>Latitude / longitude: {formatValue(backendStation.latitude)} / {formatValue(backendStation.longitude)}</div>
+                    <div>Elevation: {formatValue(backendStation.elevation, { unit: 'm' })}</div>
+                  </dd>
+                ) : (
+                  <dd className="text-status-warn text-xs">
+                    Unavailable{connection ? ` — ${connection.label}` : ''}. Station metadata shown here comes from the local configuration.
+                  </dd>
+                )}
               </div>
               <div>
                 <dt className="text-[11px] uppercase tracking-wide text-ice-300/50">Operator</dt>
@@ -57,10 +73,13 @@ export default function InfoPanel({ open, onClose, meta }) {
             </dl>
             <div className="mt-4 pt-3 border-t border-white/10 text-[11px] text-ice-300/50 leading-relaxed">
               This digital twin is a visual prototype. Weather comes from the
-              OpenWeather API when a key is configured; every other
-              operational figure — power, fuel, water, occupancy and similar
-              readings — is simulated for demonstration, not a live station
-              sensor feed.
+              OpenWeather API when a key is configured. The station overview
+              comes from the POLARTWIN backend when it is reachable and is
+              labelled with the provenance the backend reports (e.g.
+              SIMULATED or REAL OBSERVATION). Per-system figures — power,
+              fuel, water, occupancy and similar readings — come from a local
+              demo simulator and are labelled SIMULATED; they are not a live
+              station sensor feed.
             </div>
           </motion.div>
         </motion.div>

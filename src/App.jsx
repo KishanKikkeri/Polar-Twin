@@ -15,10 +15,18 @@ import StationSelector from './components/ui/StationSelector.jsx'
 import StationSwitcher from './components/ui/StationSwitcher.jsx'
 import WeatherWidget from './components/weather/WeatherWidget.jsx'
 import DashboardPanel from './components/dashboard/DashboardPanel.jsx'
+import AssetInspector from './components/dashboard/AssetInspector.jsx'
+import StationOverviewCard from './components/ui/StationOverviewCard.jsx'
+import { SimulatedBanner } from './components/ui/DataBadges.jsx'
 import BlueprintHUD from './components/ui/BlueprintHUD.jsx'
 import { getPanelComponent } from './hooks/useStationData.js'
 import { useLiveData } from './hooks/useLiveData.js'
 import { useStationWeather } from './hooks/useStationWeather.js'
+import { useStationTwin } from './hooks/useStationTwin.js'
+import { useBackendStations } from './hooks/useBackendStations.js'
+import { useNow } from './hooks/useNow.js'
+import { buildTwinView } from './services/twin/twinView.js'
+import { groupAssetsByObject } from './services/twin/assetMapping.js'
 import { getStation } from './data/stations/index.js'
 import { getInfraBundle } from './data/infra/index.js'
 
@@ -38,6 +46,21 @@ export default function App() {
   const live = useLiveData()
   const station = activeStationId ? getStation(activeStationId) : null
   const weather = useStationWeather(activeStationId, station?.meta.coords)
+
+  // Backend integration. The local station config still drives the 3D scene;
+  // the backend supplies status/overview/assets. Anything not coming from the
+  // backend is shown from local simulation and labelled as such.
+  const backendStations = useBackendStations()
+  const { twin, loading: twinLoading } = useStationTwin(activeStationId)
+  const now = useNow(30000)
+  const view = useMemo(
+    () => buildTwinView(twin, { now, loading: twinLoading, localAlerts: station?.alerts || [] }),
+    [twin, now, twinLoading, station]
+  )
+  const assetGroups = useMemo(
+    () => (twin?.assets && station ? groupAssetsByObject(twin.assets, station.objects) : null),
+    [twin, station]
+  )
 
   const selected = useMemo(
     () => (station ? station.objects.find((o) => o.id === selectedId) || null : null),
@@ -83,7 +106,7 @@ export default function App() {
     <div className="relative w-screen h-screen bg-ink-950 overflow-hidden font-body">
       {phase === 'loading' && <LoadingScreen onDone={() => setPhase('select')} />}
 
-      {phase === 'select' && <StationSelector onSelect={handleSelectStation} />}
+      {phase === 'select' && <StationSelector onSelect={handleSelectStation} backend={backendStations} />}
 
       {phase === 'station' && station && (
         <>
@@ -119,6 +142,8 @@ export default function App() {
             <BlueprintHUD
               stationName={station.meta.shortName}
               objectCount={station.objects.length}
+              dataLabel={view.badge.dataLabel}
+              linkLabel={view.badge.linkLabel}
             />
           )}
 
@@ -131,8 +156,19 @@ export default function App() {
             onInfoOpen={() => setInfoOpen(true)}
             onAlertsOpen={() => setAlertsOpen((v) => !v)}
             onMapViewToggle={() => setViewMode((v) => (v === '3d' ? 'map' : '3d'))}
-            alertCount={station.alerts.filter((a) => a.level === 'warn').length}
+            alertCount={view.alerts.filter((a) => a.level !== 'normal').length}
+            connection={view.connection}
+            provenance={view.overview?.provenance ?? null}
           />
+
+          {!selected && (
+            <StationOverviewCard
+              view={view}
+              loading={twinLoading}
+              error={twin?.errors?.overview}
+              defaultOpen={viewMode === 'map'}
+            />
+          )}
 
           <WeatherWidget stationName={station.meta.shortName} weather={weather} />
 
@@ -143,13 +179,22 @@ export default function App() {
               <LayerControl open={layersOpen} layers={layers} onToggle={toggleLayer} onClose={() => setLayersOpen(false)} />
               <Alerts
                 open={alertsOpen}
-                alerts={station.alerts}
+                alerts={view.alerts}
+                origin={view.alertsOrigin}
+                provenance={view.overview?.provenance ?? null}
                 objects={station.objects}
                 onClose={() => setAlertsOpen(false)}
                 onGoTo={handleSelectObject}
               />
               <Search open={searchOpen} onClose={() => setSearchOpen(false)} onSelect={handleSelectObject} objects={station.objects} />
               <DashboardPanel obj={selected} onClose={handleOverview}>
+                <SimulatedBanner connection={view.connection} />
+                <AssetInspector
+                  status={twinLoading ? 'loading' : assetGroups ? 'ok' : 'unavailable'}
+                  assets={assetGroups?.byObjectId[selected?.id] || []}
+                  error={twin?.errors?.assets}
+                  retained={Boolean(twin?.retained)}
+                />
                 {PanelComponent && panelData && <PanelComponent data={panelData} live={live} />}
               </DashboardPanel>
             </>
@@ -157,11 +202,17 @@ export default function App() {
 
           <StationSwitcher currentId={station.meta.id} onSwitch={handleSwitchStation} />
 
-          <StatusBar live={live} />
+          <StatusBar live={live} view={view} />
         </>
       )}
 
-      <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)} meta={station?.meta} />
+      <InfoPanel
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        meta={station?.meta}
+        backendStation={twin?.station ?? null}
+        connection={view.connection}
+      />
     </div>
   )
 }

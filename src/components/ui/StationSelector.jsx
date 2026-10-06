@@ -1,7 +1,18 @@
 import { motion } from 'framer-motion'
 import { stationList } from '../../data/stations/index.js'
+import { Chip } from './DataBadges.jsx'
+import { describeStationStatus } from '../../services/twin/twinView.js'
 
-export default function StationSelector({ onSelect }) {
+function BackendBadge({ backend, stationId }) {
+  if (backend.status === 'loading') return <Chip tone="unknown">CHECKING BACKEND…</Chip>
+  if (backend.status === 'error') return <Chip tone="simulated" title="Backend unreachable; local simulation will be used">BACKEND UNAVAILABLE · SIMULATED</Chip>
+  const rec = backend.stations.find((b) => b.station_id === stationId)
+  if (!rec) return <Chip tone="warn" title="The backend did not list this station">NOT LISTED BY BACKEND</Chip>
+  const s = describeStationStatus(rec.status)
+  return <Chip tone={s.tone} title="Station status reported by the backend">BACKEND · {s.label}</Chip>
+}
+
+export default function StationSelector({ onSelect, backend = { status: 'loading', stations: [] } }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -39,6 +50,7 @@ export default function StationSelector({ onSelect }) {
                 {s.shortName.toUpperCase()}
               </div>
               <div className="text-[11px] text-ice-300/70">{s.location}</div>
+              <div className="mt-1.5"><BackendBadge backend={backend} stationId={s.id} /></div>
             </div>
             <div className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-ice-100 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
               →

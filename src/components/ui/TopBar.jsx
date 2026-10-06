@@ -1,3 +1,5 @@
+import { ConnectionDot, Chip, ProvenanceChip } from './DataBadges.jsx'
+
 export default function TopBar({
   stationName,
   showStationTools,
@@ -8,6 +10,8 @@ export default function TopBar({
   onAlertsOpen,
   onMapViewToggle,
   alertCount,
+  connection,
+  provenance,
 }) {
   return (
     <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-3 pointer-events-none">
@@ -61,12 +65,16 @@ export default function TopBar({
         >
           ⓘ
         </button>
-        <div className="glass rounded-lg px-3 py-2 text-xs flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-status-normal blink-dot" />
-          <span className="text-ice-100 hidden md:inline">SYSTEM ONLINE</span>
+        <div className="glass rounded-lg px-3 py-2 text-xs flex items-center gap-2" title={connection.detail}>
+          <ConnectionDot connection={connection} />
+          <span className="text-ice-100 hidden md:inline">{connection.label}</span>
         </div>
-        <div className="glass rounded-lg px-3 py-2 text-[10px] text-ice-accent hidden lg:flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-ice-accent blink-dot" /> LIVE SIMULATION
+        <div className="glass rounded-lg px-3 py-2 hidden lg:flex items-center">
+          {provenance ? (
+            <ProvenanceChip provenance={provenance} />
+          ) : (
+            <Chip tone="simulated" title="No backend data: the local demo simulation is displayed">SIMULATED</Chip>
+          )}
         </div>
       </div>
     </div>

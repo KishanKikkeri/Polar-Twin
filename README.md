@@ -95,6 +95,20 @@ a real backend/ingestion pipeline, role-based access (station vs. MoES-HQ),
 and offline/low-bandwidth handling for Antarctica's limited satellite
 link — worth calling out even if not fully built for the demo.
 
+## Backend integration (v1 slice)
+
+The frontend talks to the POLARTWIN backend through a single client
+(`src/services/api/client.js`); contract typedefs live in `src/types/api.js`.
+
+```
+VITE_API_BASE_URL=http://localhost:8000   # default if unset (dev only)
+npm test                                   # API client + provenance/freshness/fallback tests
+```
+
+If the backend is unreachable the app keeps working on the local simulation,
+clearly labelled **SIMULATED — Backend unavailable**. See
+`docs/frontend-integration-handover.md` for behaviour and assumptions.
+
 ## Data disclaimer
 
 All operational values — power, fuel, water, occupancy, temperature,
