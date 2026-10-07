@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: polartwin-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: POLARTWIN_ENVIRONMENT
+        value: production
+      - key: POLARTWIN_DATABASE_URL
+        sync: false
+      - key: POLARTWIN_AUTH_SECRET
+        generateValue: true
+      - key: POLARTWIN_AUTH_ISSUER
+        value: polartwin
+      - key: POLARTWIN_AUTH_AUDIENCE
+        value: polartwin-api
+      - key: POLARTWIN_AUTH_PUBLIC_READS
+        value: "true"
+      - key: POLARTWIN_TIMESCALEDB_ENABLED
+        value: "true"
+      - key: POLARTWIN_LOG_LEVEL
+        value: INFO
+      - key: POLARTWIN_LOG_JSON
+        value: "true"
+      - key: POLARTWIN_RUNTIME_ENABLED
+        value: "false"
+      - key: POLARTWIN_RUNTIME_CLOCK_MODE
+        value: realtime
+      - key: POLARTWIN_RUNTIME_STEP_SECONDS
+        value: "60"
+      - key: POLARTWIN_RUNTIME_TICK_INTERVAL_SECONDS
+        value: "5"
+      - key: POLARTWIN_RUNTIME_BACKFILL_HOURS
+        value: "0"
+      - key: POLARTWIN_RUNTIME_SEED
+        value: "20261007"
+      - key: POLARTWIN_CORS_ORIGINS
+        sync: false
