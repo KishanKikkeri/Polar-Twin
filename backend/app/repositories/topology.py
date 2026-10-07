@@ -1,5 +1,10 @@
 """Queries for static topology."""
 
+# Needed on Python < 3.14: StationRepository defines a method named `list`, which
+# shadows the builtin inside the class body, so a later `list[str]` annotation
+# would otherwise evaluate to that method and crash at import time.
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 from sqlalchemy import func, select

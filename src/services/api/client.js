@@ -42,6 +42,7 @@ export class ApiError extends Error {
     this.kind = kind
     this.status = details.status
     this.url = details.url
+    this.code = details.code // backend error code, e.g. 'STATION_NOT_FOUND'
     if (details.cause !== undefined) this.cause = details.cause
   }
 }
@@ -140,10 +141,19 @@ export function createApiClient(options = {}) {
         throw new ApiError('network', 'Backend unreachable', { url, cause: err })
       }
       if (!res.ok) {
-        throw new ApiError('http', `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`, {
-          status: res.status,
-          url,
-        })
+        // The backend answers errors as {error: {code, message, details}}; use it
+        // when present, but never fail because the body is absent/odd.
+        let code
+        let detail
+        try {
+          const errBody = await res.json()
+          code = typeof errBody?.error?.code === 'string' ? errBody.error.code : undefined
+          detail = typeof errBody?.error?.message === 'string' ? errBody.error.message : undefined
+        } catch {
+          /* body not JSON — ignore */
+        }
+        const base = `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
+        throw new ApiError('http', detail ? `${base}: ${detail}` : base, { status: res.status, url, code })
       }
       try {
         return { body: await res.json(), url }

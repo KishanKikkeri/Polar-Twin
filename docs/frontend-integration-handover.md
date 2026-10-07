@@ -50,3 +50,15 @@ Untouched: 3D scene/renderer, station configs (`src/data/stations`), simulated d
 - Per-system dashboard panels still render local simulated data (labelled); they are not backend-driven yet.
 - `BlueprintHUD` still hard-codes Maitri's coordinates/"SYS / MAITRI-01" for every station (pre-existing, out of scope).
 - Bundle is >500 kB (pre-existing warning).
+
+## Verified against the real backend (Python 3.12, SQLite, seeded)
+Frontend `npm test` (132) and `npm run build` pass; backend `pytest` (71) passes. In a headless browser against `uvicorn` on :8000, both stations load overview/assets/station with all-200 responses; overview shows `SYNTHETIC` + `CURRENT`, risk and domain values render, station switching and asset inspector (e.g. Power House) work.
+
+Mismatches found and handled:
+1. **Quality vocabulary** — backend emits `GOOD/SUSPECT/BAD/MISSING`; the v1 typedef says `VALID/…/INVALID`. Adapters now accept both (GOOD→VALID, BAD→INVALID). Typedef unchanged, with a NOTE to confirm with Agent 1.
+2. **Stale threshold** — 15 min was tighter than the backend's per-channel `stale_after_seconds` (≥ 1800 s) and would show STALE while the backend says FRESH. Default is now 30 min.
+3. **Error bodies** — backend errors are `{error:{code,message,details}}`; `ApiError` now carries `code` and the backend message.
+4. **Backend import crash on Python < 3.14** — `app/repositories/topology.py` defines `StationRepository.list`, shadowing the builtin, so the later `list[str]` annotation raised `TypeError` at import and `uvicorn app.main:app` would not start. Fixed with `from __future__ import annotations` (no behaviour change). Backend owner please review.
+
+Not exercised against the live backend: non-empty `active_alerts` (the seeded data has none) and a genuinely `STALE` overview (needs ~30 min without new telemetry); both are covered by unit tests only.
+Station-level assets with `building_id: null` (the weather station) are not linked to any 3D object and are not displayed.

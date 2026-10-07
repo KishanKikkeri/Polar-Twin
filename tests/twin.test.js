@@ -289,3 +289,19 @@ test('HUD badge never says LIVE / STABLE without a backend', () => {
   assert.equal(up.badge.linkLabel, 'BACKEND CONNECTED')
   assert.doesNotMatch(JSON.stringify([down.badge, up.badge]), /LIVE|STABLE/)
 })
+
+test('real-backend quality vocabulary (GOOD/BAD) is understood', () => {
+  assert.equal(describeQuality('GOOD').code, 'VALID')
+  assert.equal(describeQuality('GOOD').flagged, false)
+  assert.equal(describeQuality('BAD').code, 'INVALID')
+  assert.equal(describeQuality('BAD').usable, false)
+  assert.equal(assessFreshness({ timestamp: '2026-10-06T18:05:00Z', quality: 'BAD', now: NOW }).state, 'unknown')
+  const p = describeTelemetryPoint({ telemetry_id: '1', station_id: 'maitri', parameter: 'air_temp_c', unit: 'degC', value: -12.4, quality: 'GOOD', source_type: 'SYNTHETIC', timestamp: '2026-10-06T18:05:00Z' }, { now: NOW })
+  assert.equal(p.display, '-12.4 degC')
+  assert.equal(p.provenance.label, 'SYNTHETIC')
+})
+
+test('default stale threshold matches backend smallest stale_after (30 min)', () => {
+  assert.equal(DEFAULT_STALE_AFTER_MS, 30 * 60 * 1000)
+  assert.equal(assessFreshness({ timestamp: new Date(NOW - 25 * 60 * 1000).toISOString(), now: NOW }).state, 'current')
+})

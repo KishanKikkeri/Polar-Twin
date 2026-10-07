@@ -5,9 +5,12 @@
 
 /** @typedef {'current'|'stale'|'missing'|'unknown'} FreshnessState */
 
-// Frontend display assumption (NOT part of the backend contract): data older
-// than this is shown as STALE. Callers may override per use.
-export const DEFAULT_STALE_AFTER_MS = 15 * 60 * 1000
+// Frontend display assumption (NOT part of the v1 contract): data older than
+// this is shown as STALE. 30 min matches the smallest per-channel
+// `stale_after_seconds` (1800 s) the real backend uses, so the UI does not
+// call data stale while the backend still considers it FRESH. Callers may
+// override per use.
+export const DEFAULT_STALE_AFTER_MS = 30 * 60 * 1000
 // Tolerated client/server clock skew before a "future" timestamp is distrusted.
 export const FUTURE_TOLERANCE_MS = 5 * 60 * 1000
 
@@ -39,7 +42,8 @@ const LABELS = { current: 'CURRENT', stale: 'STALE', missing: 'MISSING', unknown
  */
 export function assessFreshness({ timestamp, quality, value, now = Date.now(), staleAfterMs = DEFAULT_STALE_AFTER_MS } = {}) {
   const nowMs = now instanceof Date ? now.getTime() : now
-  const q = typeof quality === 'string' ? quality.trim().toUpperCase() : ''
+  let q = typeof quality === 'string' ? quality.trim().toUpperCase() : ''
+  if (q === 'BAD') q = 'INVALID' // backend vocabulary (see provenance.js)
   const make = (state, reason, ageMs = null, timestampMs = null) => ({ state, label: LABELS[state], reason, ageMs, timestampMs })
 
   const valueMissing = value === null || (typeof value === 'number' && Number.isNaN(value))

@@ -44,6 +44,11 @@ export function describeProvenance(value) {
   return { code, ...PROVENANCE[code] }
 }
 
+// The real backend (docs/API_CONTRACT.md §2.6) emits GOOD / SUSPECT / BAD /
+// MISSING, whereas the v1 typedef lists VALID / ... / INVALID. Both vocabularies
+// are accepted: GOOD is treated as VALID and BAD as INVALID.
+const QUALITY_ALIASES = { GOOD: 'VALID', BAD: 'INVALID' }
+
 // usable: may the value be shown as a number? flagged: show a caution marker.
 const QUALITY = {
   VALID: { label: 'VALID', usable: true, flagged: false },
@@ -59,7 +64,8 @@ const QUALITY = {
  * @returns {{code: DataQuality|'UNKNOWN', label: string, usable: boolean, flagged: boolean}}
  */
 export function describeQuality(value) {
-  const code = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  let code = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  code = QUALITY_ALIASES[code] || code
   if (Object.prototype.hasOwnProperty.call(QUALITY, code)) return { code: /** @type {DataQuality} */ (code), ...QUALITY[code] }
   return { code: 'UNKNOWN', label: 'QUALITY UNKNOWN', usable: true, flagged: true }
 }

@@ -183,3 +183,18 @@ test('caller abort -> ApiError(kind=aborted)', async () => {
   ctrl.abort()
   await assert.rejects(() => p, (e) => e.kind === 'aborted')
 })
+
+test('backend error body ({error:{code,message}}) is surfaced on ApiError', async () => {
+  const body = { error: { code: 'STATION_NOT_FOUND', message: "Station 'nope' does not exist", details: {} } }
+  const c = createApiClient({ baseUrl: BASE, fetchImpl: mockFetch(() => jsonResponse(body, { status: 404 })) })
+  await assert.rejects(
+    () => c.getStation('nope'),
+    (e) => e.kind === 'http' && e.status === 404 && e.code === 'STATION_NOT_FOUND' && /does not exist/.test(e.message)
+  )
+})
+
+test('non-JSON error body still yields a plain http ApiError', async () => {
+  const res = { ok: false, status: 502, statusText: 'Bad Gateway', json: async () => { throw new SyntaxError('html') } }
+  const c = createApiClient({ baseUrl: BASE, fetchImpl: mockFetch(() => res) })
+  await assert.rejects(() => c.getStations(), (e) => e.kind === 'http' && e.status === 502 && e.code === undefined)
+})

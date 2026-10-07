@@ -60,6 +60,10 @@
 
 /**
  * @typedef {'VALID'|'MISSING'|'ESTIMATED'|'INTERPOLATED'|'SUSPECT'|'INVALID'} DataQuality
+ *
+ * NOTE: the running backend currently emits GOOD / SUSPECT / BAD / MISSING
+ * (docs/API_CONTRACT.md). The adapters in src/services/twin/provenance.js map
+ * GOOD→VALID and BAD→INVALID; confirm the final vocabulary with Agent 1.
  */
 
 /**
