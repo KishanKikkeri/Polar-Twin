@@ -24,11 +24,18 @@ import { useLiveData } from './hooks/useLiveData.js'
 import { useStationWeather } from './hooks/useStationWeather.js'
 import { useStationTwin } from './hooks/useStationTwin.js'
 import { useBackendStations } from './hooks/useBackendStations.js'
+import { useBackendHealth } from './hooks/useBackendHealth.js'
 import { useNow } from './hooks/useNow.js'
 import { buildTwinView } from './services/twin/twinView.js'
 import { groupAssetsByObject } from './services/twin/assetMapping.js'
 import { getStation } from './data/stations/index.js'
 import { getInfraBundle } from './data/infra/index.js'
+import CopilotModal from './components/operator/CopilotModal.jsx'
+import WhatIfModal from './components/operator/WhatIfModal.jsx'
+import ReplayModal from './components/operator/ReplayModal.jsx'
+import EmergencyModal from './components/operator/EmergencyModal.jsx'
+import CompareModal from './components/operator/CompareModal.jsx'
+import IntelligenceModal from './components/operator/IntelligenceModal.jsx'
 
 export default function App() {
   const [phase, setPhase] = useState('loading') // loading | select | station
@@ -43,6 +50,15 @@ export default function App() {
   const [alertsOpen, setAlertsOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
 
+  // Operator Suite modal states
+  const [copilotOpen, setCopilotOpen] = useState(false)
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
+  const [replayOpen, setReplayOpen] = useState(false)
+  const [emergencyOpen, setEmergencyOpen] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [intelOpen, setIntelOpen] = useState(false)
+  const [intelTab, setIntelTab] = useState('forecast')
+
   const live = useLiveData()
   const station = activeStationId ? getStation(activeStationId) : null
   const weather = useStationWeather(activeStationId, station?.meta.coords)
@@ -51,8 +67,14 @@ export default function App() {
   // the backend supplies status/overview/assets. Anything not coming from the
   // backend is shown from local simulation and labelled as such.
   const backendStations = useBackendStations()
-  const { twin, loading: twinLoading } = useStationTwin(activeStationId)
+  const backendHealth = useBackendHealth()
+  const { twin, loading: twinLoading, refresh: refreshTwin } = useStationTwin(activeStationId)
   const now = useNow(30000)
+
+  const handleRefresh = () => {
+    refreshTwin()
+    backendHealth.refresh()
+  }
   const view = useMemo(
     () => buildTwinView(twin, { now, loading: twinLoading, localAlerts: station?.alerts || [] }),
     [twin, now, twinLoading, station]
@@ -156,9 +178,20 @@ export default function App() {
             onInfoOpen={() => setInfoOpen(true)}
             onAlertsOpen={() => setAlertsOpen((v) => !v)}
             onMapViewToggle={() => setViewMode((v) => (v === '3d' ? 'map' : '3d'))}
+            onCopilotOpen={() => setCopilotOpen(true)}
+            onWhatIfOpen={() => setWhatIfOpen(true)}
+            onReplayOpen={() => setReplayOpen(true)}
+            onEmergencyOpen={() => setEmergencyOpen(true)}
+            onCompareOpen={() => setCompareOpen(true)}
+            onIntelligenceOpen={(tab) => {
+              setIntelTab(tab || 'forecast')
+              setIntelOpen(true)
+            }}
             alertCount={view.alerts.filter((a) => a.level !== 'normal').length}
             connection={view.connection}
             provenance={view.overview?.provenance ?? null}
+            backendHealth={backendHealth}
+            onRefresh={handleRefresh}
           />
 
           {!selected && (
@@ -167,6 +200,13 @@ export default function App() {
               loading={twinLoading}
               error={twin?.errors?.overview}
               defaultOpen={viewMode === 'map'}
+              onOpenCopilot={() => setCopilotOpen(true)}
+              onOpenWhatIf={() => setWhatIfOpen(true)}
+              onOpenIntelligence={() => {
+                setIntelTab('forecast')
+                setIntelOpen(true)
+              }}
+              onOpenEmergency={() => setEmergencyOpen(true)}
             />
           )}
 
@@ -212,6 +252,41 @@ export default function App() {
         meta={station?.meta}
         backendStation={twin?.station ?? null}
         connection={view.connection}
+        backendHealth={backendHealth}
+      />
+
+      {/* Operator Engines Suite */}
+      <CopilotModal
+        open={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        stationId={activeStationId || 'maitri'}
+      />
+      <WhatIfModal
+        open={whatIfOpen}
+        onClose={() => setWhatIfOpen(false)}
+        stationId={activeStationId || 'maitri'}
+      />
+      <ReplayModal
+        open={replayOpen}
+        onClose={() => setReplayOpen(false)}
+        stationId={activeStationId || 'maitri'}
+      />
+      <EmergencyModal
+        open={emergencyOpen}
+        onClose={() => setEmergencyOpen(false)}
+        stationId={activeStationId || 'maitri'}
+      />
+      <CompareModal
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        defaultStationA={activeStationId || 'maitri'}
+        defaultStationB={activeStationId === 'bharati' ? 'maitri' : 'bharati'}
+      />
+      <IntelligenceModal
+        open={intelOpen}
+        onClose={() => setIntelOpen(false)}
+        stationId={activeStationId || 'maitri'}
+        initialEngine={intelTab}
       />
     </div>
   )

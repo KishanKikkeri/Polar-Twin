@@ -15,7 +15,7 @@
 /** @typedef {import('../../types/api.js').TelemetryPoint} TelemetryPoint */
 
 export const DEFAULT_API_BASE_URL = 'http://localhost:8000'
-export const DEFAULT_TIMEOUT_MS = 8000
+export const DEFAULT_TIMEOUT_MS = 60000 // 60 seconds (allows backend cold start / DB init)
 
 /** Supported telemetry ranges in the v1 contract. */
 export const TELEMETRY_RANGES = Object.freeze(['1h', '6h', '24h', '7d', '30d'])
@@ -64,6 +64,16 @@ export function readEnvBaseUrl() {
   return import.meta.env?.VITE_API_BASE_URL
 }
 
+/** Reads VITE_API_TIMEOUT_MS (e.g. 60000) or falls back to DEFAULT_TIMEOUT_MS. */
+export function readEnvTimeoutMs() {
+  const raw = import.meta.env?.VITE_API_TIMEOUT_MS
+  if (raw !== undefined && raw !== null && raw !== '') {
+    const parsed = Number(raw)
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed
+  }
+  return DEFAULT_TIMEOUT_MS
+}
+
 /**
  * Builds an absolute URL. Query params that are undefined/null/'' are omitted.
  * @param {string} baseUrl
@@ -109,11 +119,11 @@ function expectArray(body, url) {
  */
 export function createApiClient(options = {}) {
   const baseUrl = resolveBaseUrl(options.baseUrl)
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeoutMs = options.timeoutMs ?? readEnvTimeoutMs()
   // Late-bound so tests (and polyfills) that replace globalThis.fetch work.
   const doFetch = options.fetchImpl || ((...args) => globalThis.fetch(...args))
 
-  async function request(path, { query, signal } = {}) {
+  async function request(path, { method = 'GET', body, headers = {}, query, signal } = {}) {
     const url = buildUrl(baseUrl, path, query)
     const controller = new AbortController()
     let timedOut = false
@@ -127,12 +137,27 @@ export function createApiClient(options = {}) {
       else signal.addEventListener('abort', onExternalAbort, { once: true })
     }
 
+    const fetchHeaders = {
+      Accept: 'application/json',
+      ...headers,
+    }
+    let fetchBody
+    if (body !== undefined && body !== null) {
+      if (typeof body === 'string') {
+        fetchBody = body
+      } else {
+        fetchHeaders['Content-Type'] = 'application/json'
+        fetchBody = JSON.stringify(body)
+      }
+    }
+
     try {
       let res
       try {
         res = await doFetch(url, {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
+          method,
+          headers: fetchHeaders,
+          body: fetchBody,
           signal: controller.signal,
         })
       } catch (err) {
@@ -168,6 +193,16 @@ export function createApiClient(options = {}) {
 
   return {
     baseUrl,
+    timeoutMs,
+
+    /** Generic request helper */
+    request,
+
+    /** Generic POST helper */
+    async post(path, body, { headers, query, signal } = {}) {
+      const { body: resBody } = await request(path, { method: 'POST', body, headers, query, signal })
+      return resBody
+    },
 
     /** GET /health — shape not specified in v1; returned as-is. */
     async getHealth({ signal } = {}) {
@@ -218,11 +253,78 @@ export function createApiClient(options = {}) {
       })
       return expectArray(body, url)
     },
+
+    /** POST /api/v1/auth/token — Mint a dev/test bearer token */
+    async createToken(payload, { signal } = {}) {
+      const { body } = await request('/api/v1/auth/token', { method: 'POST', body: payload, signal })
+      return body
+    },
+
+    /** POST /api/v1/telemetry/ingest — Ingest telemetry readings/events */
+    async ingestTelemetry(events, { token, signal } = {}) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const payload = Array.isArray(events) ? { events } : events
+      const { body } = await request('/api/v1/telemetry/ingest', {
+        method: 'POST',
+        headers,
+        body: payload,
+        signal,
+      })
+      return body
+    },
+
+    /** POST /api/v1/runtime/step — Advance simulation clock by one tick */
+    async stepRuntime({ token, signal } = {}) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const { body } = await request('/api/v1/runtime/step', {
+        method: 'POST',
+        headers,
+        signal,
+      })
+      return body
+    },
+
+    /** POST /api/v1/runtime/{station_id}/perturb — Inject scenario perturbation */
+    async perturbStation(stationId, perturbation, { token, signal } = {}) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const { body } = await request(`/api/v1/runtime/${encodeURIComponent(stationId)}/perturb`, {
+        method: 'POST',
+        headers,
+        body: perturbation,
+        signal,
+      })
+      return body
+    },
+
+    /** POST /api/v1/alerts/{alert_id}/acknowledge — Acknowledge an active alert */
+    async acknowledgeAlert(alertId, note = '', { token, signal } = {}) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const { body } = await request(`/api/v1/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+        method: 'POST',
+        headers,
+        body: { note },
+        signal,
+      })
+      return body
+    },
+
+    /** GET /api/v1/runtime/status — Runtime simulation status */
+    async getRuntimeStatus({ token, signal } = {}) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const { body } = await request('/api/v1/runtime/status', {
+        headers,
+        signal,
+      })
+      return body
+    },
   }
 }
 
-// Default app-wide client, configured from Vite env (VITE_API_BASE_URL).
-export const apiClient = createApiClient({ baseUrl: readEnvBaseUrl() })
+// Default app-wide client, configured from Vite env (VITE_API_BASE_URL, VITE_API_TIMEOUT_MS).
+export const apiClient = createApiClient({
+  baseUrl: readEnvBaseUrl(),
+  timeoutMs: readEnvTimeoutMs(),
+})
 
 export const getHealth = (...a) => apiClient.getHealth(...a)
 export const getStations = (...a) => apiClient.getStations(...a)
@@ -230,3 +332,9 @@ export const getStation = (...a) => apiClient.getStation(...a)
 export const getStationOverview = (...a) => apiClient.getStationOverview(...a)
 export const getStationAssets = (...a) => apiClient.getStationAssets(...a)
 export const getStationTelemetry = (...a) => apiClient.getStationTelemetry(...a)
+export const createToken = (...a) => apiClient.createToken(...a)
+export const ingestTelemetry = (...a) => apiClient.ingestTelemetry(...a)
+export const stepRuntime = (...a) => apiClient.stepRuntime(...a)
+export const perturbStation = (...a) => apiClient.perturbStation(...a)
+export const acknowledgeAlert = (...a) => apiClient.acknowledgeAlert(...a)
+export const getRuntimeStatus = (...a) => apiClient.getRuntimeStatus(...a)

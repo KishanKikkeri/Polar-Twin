@@ -20,7 +20,7 @@ INSECURE_DEV_SECRET = "polartwin-dev-only-insecure-secret-change-me"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="POLARTWIN_",
-        env_file=".env",
+        env_file=(".env", "backend/.env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

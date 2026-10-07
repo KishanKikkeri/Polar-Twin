@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   ApiError,
   DEFAULT_API_BASE_URL,
+  DEFAULT_TIMEOUT_MS,
+  readEnvTimeoutMs,
   buildUrl,
   createApiClient,
   resolveBaseUrl,
@@ -198,3 +200,32 @@ test('non-JSON error body still yields a plain http ApiError', async () => {
   const c = createApiClient({ baseUrl: BASE, fetchImpl: mockFetch(() => res) })
   await assert.rejects(() => c.getStations(), (e) => e.kind === 'http' && e.status === 502 && e.code === undefined)
 })
+
+test('default timeout is 60s and readEnvTimeoutMs reads fallback', () => {
+  assert.strictEqual(DEFAULT_TIMEOUT_MS, 60000)
+  assert.strictEqual(readEnvTimeoutMs(), 60000)
+  const c = createApiClient({ baseUrl: BASE })
+  assert.strictEqual(c.timeoutMs, 60000)
+})
+
+test('POST methods send JSON and headers properly', async () => {
+  let captured = null
+  const c = createApiClient({
+    baseUrl: BASE,
+    fetchImpl: mockFetch((url, init) => {
+      captured = { url, ...init }
+      return jsonResponse({ success: true })
+    }),
+  })
+
+  await c.ingestTelemetry([{ channel_id: 'test', value: 10 }], { token: 'jwt-123' })
+  assert.strictEqual(captured.method, 'POST')
+  assert.strictEqual(captured.headers['Authorization'], 'Bearer jwt-123')
+  assert.strictEqual(captured.headers['Content-Type'], 'application/json')
+  assert.deepStrictEqual(JSON.parse(captured.body), { events: [{ channel_id: 'test', value: 10 }] })
+
+  await c.stepRuntime({ token: 'jwt-456' })
+  assert.strictEqual(captured.method, 'POST')
+  assert.strictEqual(captured.headers['Authorization'], 'Bearer jwt-456')
+})
+

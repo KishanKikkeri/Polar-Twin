@@ -67,13 +67,22 @@ export function ConnectionDot({ connection, className = '' }) {
 
 /** Prominent banner for panels that render local (not backend) simulated values. */
 export function SimulatedBanner({ connection }) {
-  const detail =
-    connection?.state === 'connected'
-      ? 'Detail figures below come from the local demo simulator. The backend overview does not yet supply per-system data.'
-      : 'Backend unavailable. All figures below come from the local demo simulator.'
+  const isLoading = connection?.state === 'loading'
+  const isConnected = connection?.state === 'connected'
+
+  const title = isLoading
+    ? '● CONNECTING TO BACKEND — PLEASE WAIT'
+    : '● SIMULATED DATA — NOT LIVE TELEMETRY'
+
+  const detail = isConnected
+    ? 'Detail figures below come from the local demo simulator. The backend overview does not yet supply per-system data.'
+    : isLoading
+    ? 'Establishing connection to POLARTWIN backend... Awaiting station telemetry and overview.'
+    : 'Backend unavailable. All figures below come from the local demo simulator.'
+
   return (
-    <div className="rounded-lg border border-status-warn/40 bg-status-warn/10 px-3 py-2">
-      <div className="text-[11px] font-semibold tracking-wide text-status-warn">● SIMULATED DATA — NOT LIVE TELEMETRY</div>
+    <div className={`rounded-lg border px-3 py-2 ${isLoading ? 'border-ice-accent/40 bg-ice-accent/10' : 'border-status-warn/40 bg-status-warn/10'}`}>
+      <div className={`text-[11px] font-semibold tracking-wide ${isLoading ? 'text-ice-accent animate-pulse' : 'text-status-warn'}`}>{title}</div>
       <div className="text-[11px] text-ice-300/70 mt-0.5 leading-snug">{detail}</div>
     </div>
   )

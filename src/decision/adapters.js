@@ -178,23 +178,67 @@ export function createHttpTwinProvider({
     },
 
     async getTelemetry(stationId, { metric = 'demandKw', from, to } = {}) {
+      const METRIC_MAP = {
+        demandKw: 'station_load_kw',
+        outdoorC: 'air_temp_c',
+        windMs: 'wind_speed_ms',
+        fuelL: 'total_volume_kl',
+        commsLatencyMs: 'latency_ms',
+        commsPacketLoss: 'packet_loss_pct',
+      };
+      const backendMetric = METRIC_MAP[metric] || metric;
+
       try {
         const url = new URL(`${baseUrl}/api/v1/stations/${encodeURIComponent(stationId)}/telemetry`);
-        if (metric) url.searchParams.set('metric', metric);
+        url.searchParams.set('metric', backendMetric);
         if (from) url.searchParams.set('start', from);
         if (to) url.searchParams.set('end', to);
         url.searchParams.set('order', 'asc');
-        const res = await fetch(url.toString(), { headers: headers() });
+        let res = await fetch(url.toString(), { headers: headers() });
+
+        // If station_load_kw had no records, try generic load_kw
+        if (res.ok && metric === 'demandKw') {
+          const items = await res.json();
+          if (!items.length) {
+            const fallbackUrl = new URL(`${baseUrl}/api/v1/stations/${encodeURIComponent(stationId)}/telemetry`);
+            fallbackUrl.searchParams.set('metric', 'load_kw');
+            if (from) fallbackUrl.searchParams.set('start', from);
+            if (to) fallbackUrl.searchParams.set('end', to);
+            fallbackUrl.searchParams.set('order', 'asc');
+            const fallbackRes = await fetch(fallbackUrl.toString(), { headers: headers() });
+            if (fallbackRes.ok) {
+              const fbItems = await fallbackRes.json();
+              return {
+                metric,
+                points: fbItems.map((r) => ({
+                  ts: r.observed_at || r.timestamp,
+                  value: r.value,
+                })),
+                provenance: fbItems[0]?.provenance || 'SYNTHETIC',
+              };
+            }
+          }
+          return {
+            metric,
+            points: items.map((r) => ({
+              ts: r.observed_at || r.timestamp,
+              value: r.value,
+            })),
+            provenance: items[0]?.provenance || 'SYNTHETIC',
+          };
+        }
+
         if (!res.ok) {
           if (fallbackToMock) return await mock.getTelemetry(stationId, { metric, from, to });
           throw new DependencyUnavailableError('twin', `HTTP ${res.status}: ${res.statusText}`);
         }
         const items = await res.json();
+        const multiplier = metric === 'fuelL' ? 1000 : 1;
         const points = items.map((r) => ({
           ts: r.observed_at || r.timestamp,
-          value: r.value,
+          value: r.value != null ? r.value * multiplier : null,
         }));
-        return { metric, points };
+        return { metric, points, provenance: items[0]?.provenance || 'SYNTHETIC' };
       } catch (err) {
         if (fallbackToMock) return await mock.getTelemetry(stationId, { metric, from, to });
         if (err instanceof DependencyUnavailableError) throw err;

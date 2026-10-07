@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 import { formatValue } from '../../services/twin/formatters.js'
 
-export default function InfoPanel({ open, onClose, meta, backendStation, connection }) {
+export default function InfoPanel({ open, onClose, meta, backendStation, connection, backendHealth }) {
   if (!meta) return null
   return (
     <AnimatePresence>
@@ -55,6 +55,21 @@ export default function InfoPanel({ open, onClose, meta, backendStation, connect
                 ) : (
                   <dd className="text-status-warn text-xs">
                     Unavailable{connection ? ` — ${connection.label}` : ''}. Station metadata shown here comes from the local configuration.
+                  </dd>
+                )}
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-ice-300/50">Backend health & database</dt>
+                {backendHealth?.health ? (
+                  <dd className="text-ice-100 text-xs space-y-0.5">
+                    <div>Status: <b className={backendHealth.status === 'ok' ? 'text-status-good' : 'text-status-warn'}>{backendHealth.health.status?.toUpperCase()}</b> {backendHealth.latencyMs != null ? `(${backendHealth.latencyMs}ms)` : ''}</div>
+                    <div>Database: <span className="font-mono">{backendHealth.health.database?.status?.toUpperCase()}</span></div>
+                    <div>TimescaleDB: {backendHealth.health.timescaledb?.available ? `Active (v${backendHealth.health.timescaledb.version || 'installed'})` : 'Standalone PostgreSQL'}</div>
+                    <div>Environment: <span className="font-mono">{backendHealth.health.environment}</span> · v{backendHealth.health.version}</div>
+                  </dd>
+                ) : (
+                  <dd className="text-status-warn text-xs">
+                    {backendHealth?.status === 'checking' ? 'Checking backend health…' : `Health unavailable: ${backendHealth?.error || 'Offline'}`}
                   </dd>
                 )}
               </div>

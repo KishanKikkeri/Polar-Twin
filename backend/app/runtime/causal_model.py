@@ -146,6 +146,31 @@ def build_station_causal_graph(station_id: str) -> DependencyGraph:
         )
     )
 
+    def _indoor_temp(inputs: Mapping[str, float]) -> float:
+        t_out = inputs[f"{station_id}.env.air_temp_c"]
+        demand = inputs[f"{station_id}.heating.demand_kw"]
+        boiler_pct = inputs[f"{station_id}.heating.boiler_load_pct"]
+        supplied_kw = 120.0 * (boiler_pct / 100.0)
+        deficit_kw = max(0.0, demand - supplied_kw)
+        indoor = coeffs.target_indoor_c - (deficit_kw / coeffs.ua_envelope_kw_per_c)
+        return max(t_out, round(indoor, 1))
+
+    nodes.append(
+        Node(
+            id=f"{station_id}.heating.indoor_c",
+            domain=TwinDomain.HEATING,
+            unit="degC",
+            description="Indoor habitable envelope temperature based on heating balance",
+            inputs=(f"{station_id}.env.air_temp_c", f"{station_id}.heating.demand_kw", f"{station_id}.heating.boiler_load_pct"),
+            relation=_indoor_temp,
+            formula=f"{coeffs.target_indoor_c} - (deficit / UA)",
+            channel_id=f"{station_id}.indoor-env-main.air_temp_c",
+            observation_policy="prefer_observed",
+            lower=-40.0,
+            upper=35.0,
+        )
+    )
+
     # ---------------- 3. ENERGY DOMAIN ----------------
     def _station_elec_load(inputs: Mapping[str, float]) -> float:
         q_heat = inputs[f"{station_id}.heating.demand_kw"]

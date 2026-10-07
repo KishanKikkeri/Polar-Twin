@@ -157,6 +157,34 @@ class TwinRuntimeService:
 
         is_maitri = station_id.lower() == "maitri"
         gen_name = "dg" if is_maitri else "chp"
+        g1_cap = 125.0 if is_maitri else 100.0
+        g2_cap = 125.0 if is_maitri else 100.0
+        g3_cap = 125.0 if is_maitri else 100.0
+        g1_load = dep.value(f"{station_id}.generators.unit1_load_kw")
+        g2_load = dep.value(f"{station_id}.generators.unit2_load_kw")
+        g3_load = dep.value(f"{station_id}.generators.unit3_load_kw")
+
+        def _gen_status(load: float | None, cap: float) -> str:
+            if load is None or load <= 0.5:
+                return "offline"
+            if load >= cap * 0.90:
+                return "strained"
+            return "online"
+
+        indoor_c = dep.value(f"{station_id}.heating.indoor_c")
+        if indoor_c is None:
+            indoor_c = 21.0 if is_maitri else 20.5
+
+        wind_ms = dep.value(f"{station_id}.env.wind_speed_ms") or 8.0
+        # Wind buffeting and blizzards (>15 m/s) degrade antenna dish tracking
+        link_qual = max(0.20, min(1.0, round(0.98 - (max(0.0, wind_ms - 15.0) * 0.018), 2)))
+
+        total_demand = dep.value(f"{station_id}.energy.total_load_kw") or 65.0
+        total_gen = (g1_load or 0.0) + (g2_load or 0.0) + (g3_load or 0.0)
+        battery_kwh = 120.0
+        if total_gen < total_demand:
+            deficit = total_demand - total_gen
+            battery_kwh = max(15.0, round(battery_kwh - deficit * 0.4, 1))
 
         return {
             "stationId": station_id,
@@ -165,28 +193,28 @@ class TwinRuntimeService:
                 {
                     "id": f"{station_id}.{gen_name}-1",
                     "type": "generator",
-                    "status": "online",
-                    "capacityKw": 125.0 if is_maitri else 100.0,
-                    "loading": dep.value(f"{station_id}.generators.unit1_load_kw"),
+                    "status": _gen_status(g1_load, g1_cap),
+                    "capacityKw": g1_cap,
+                    "loading": g1_load,
                 },
                 {
                     "id": f"{station_id}.{gen_name}-2",
                     "type": "generator",
-                    "status": "online",
-                    "capacityKw": 125.0 if is_maitri else 100.0,
-                    "loading": dep.value(f"{station_id}.generators.unit2_load_kw"),
+                    "status": _gen_status(g2_load, g2_cap),
+                    "capacityKw": g2_cap,
+                    "loading": g2_load,
                 },
                 {
                     "id": f"{station_id}.{gen_name}-3",
                     "type": "generator",
-                    "status": "online",
-                    "capacityKw": 125.0 if is_maitri else 100.0,
-                    "loading": dep.value(f"{station_id}.generators.unit3_load_kw"),
+                    "status": _gen_status(g3_load, g3_cap),
+                    "capacityKw": g3_cap,
+                    "loading": g3_load,
                 },
             ],
             "energy": {
-                "baseDemandKw": dep.value(f"{station_id}.energy.total_load_kw") or 65.0,
-                "batteryKwh": 120.0,
+                "baseDemandKw": total_demand,
+                "batteryKwh": battery_kwh,
                 "batteryCapacityKwh": 150.0,
             },
             "fuel": {
@@ -199,15 +227,15 @@ class TwinRuntimeService:
                 "daysOfAutonomy": dep.value(f"{station_id}.logistics.days_of_autonomy"),
             },
             "thermal": {
-                "indoorC": 21.0,
+                "indoorC": indoor_c,
                 "heatingDemandKw": dep.value(f"{station_id}.heating.demand_kw"),
             },
             "comms": {
-                "linkQuality": 0.95,
+                "linkQuality": link_qual,
             },
             "environment": {
                 "outdoorC": dep.value(f"{station_id}.env.air_temp_c") or -15.0,
-                "windMs": dep.value(f"{station_id}.env.wind_speed_ms") or 8.0,
+                "windMs": wind_ms,
             },
             "risk": {
                 "score": dep.value(f"{station_id}.risk.composite_score"),
@@ -223,12 +251,18 @@ class TwinRuntimeService:
         sim.set_perturbation(node_id, value)
         current_dep = self.get_evaluation(station_id)
         impact = sim.graph.impact(current_dep.values(), {node_id: value})
+        with self._lock:
+            dep, _ = sim.step()
+            self._latest_evaluations[station_id] = dep
         return impact
 
     def clear_perturbation(self, station_id: str, node_id: str) -> None:
         sim = self.simulators.get(station_id)
         if sim:
             sim.clear_perturbation(node_id)
+            with self._lock:
+                dep, _ = sim.step()
+                self._latest_evaluations[station_id] = dep
 
 
 _runtime_service: TwinRuntimeService | None = None

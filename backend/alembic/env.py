@@ -4,7 +4,14 @@ A caller (e.g. tests) may override it with ``config.attributes['database_url']``
 or ``-x database_url=...``.
 """
 
+import sys
+from pathlib import Path
 from logging.config import fileConfig
+
+# Ensure backend root is always present in sys.path regardless of execution CWD
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool

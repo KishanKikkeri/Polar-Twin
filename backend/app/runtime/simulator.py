@@ -11,6 +11,7 @@ from typing import Any
 
 from app.core.timeutil import ensure_utc
 from app.domain.enums import Provenance, Quality
+from app.domain.runtime_enums import NodeSource
 from app.runtime.causal_model import build_station_causal_graph
 from app.runtime.clock import SimulationClock
 from app.runtime.dependency import DependencyEvaluation, DependencyGraph
@@ -81,11 +82,32 @@ class StationSimulator:
 
         # Apply perturbations
         for k, v in self.perturbations.items():
-            if k in observations:
-                observations[k] = v
+            observations[k] = v
 
         # 3. Evaluate the DAG
         dep = self.graph.evaluate(observations)
+        if self.perturbations:
+            from app.runtime.dependency import NodeResult
+            new_results = dict(dep.results)
+            for k, v in self.perturbations.items():
+                if k in new_results:
+                    orig = new_results[k]
+                    new_results[k] = NodeResult(
+                        node_id=k,
+                        domain=orig.domain,
+                        unit=orig.unit,
+                        value=v,
+                        source=NodeSource.OBSERVED,
+                        inputs=orig.inputs,
+                        channel_id=orig.channel_id,
+                    )
+            dep = DependencyEvaluation(
+                graph_id=dep.graph_id,
+                model_version=dep.model_version,
+                graph_hash=dep.graph_hash,
+                order=dep.order,
+                results=new_results,
+            )
 
         # 4. Integrate physical dynamics (fuel depletion over the time step)
         step_hours = self.clock.step.total_seconds() / 3600.0

@@ -13,7 +13,16 @@ function Row({ label, children }) {
 // Backend twin overview. `view` is the buildTwinView() result; every state the
 // brief names is handled explicitly: loading, error/unavailable, empty,
 // stale, simulated, real-observation and unavailable values.
-export default function StationOverviewCard({ view, loading, error, defaultOpen = true }) {
+export default function StationOverviewCard({
+  view,
+  loading,
+  error,
+  defaultOpen = true,
+  onOpenCopilot,
+  onOpenWhatIf,
+  onOpenIntelligence,
+  onOpenEmergency,
+}) {
   const [open, setOpen] = useState(defaultOpen)
   useEffect(() => setOpen(defaultOpen), [defaultOpen])
 
@@ -101,6 +110,49 @@ export default function StationOverviewCard({ view, loading, error, defaultOpen 
                     )}
                   </div>
                 ))}
+
+                <div className="pt-2 border-t border-white/10 flex flex-wrap gap-1">
+                  {onOpenCopilot && (
+                    <button
+                      onClick={onOpenCopilot}
+                      className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 text-[10px] font-mono text-cyan-300 transition-colors flex items-center gap-1"
+                      title="Open AI Copilot"
+                    >
+                      <span>🤖</span>
+                      <span>Copilot</span>
+                    </button>
+                  )}
+                  {onOpenWhatIf && (
+                    <button
+                      onClick={onOpenWhatIf}
+                      className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-[10px] font-mono text-amber-300 transition-colors flex items-center gap-1"
+                      title="What-If Scenario Simulator"
+                    >
+                      <span>⚡</span>
+                      <span>What-If</span>
+                    </button>
+                  )}
+                  {onOpenIntelligence && (
+                    <button
+                      onClick={onOpenIntelligence}
+                      className="px-2 py-1 rounded bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-[10px] font-mono text-purple-300 transition-colors flex items-center gap-1"
+                      title="4B Intelligence Models"
+                    >
+                      <span>🧠</span>
+                      <span>Models</span>
+                    </button>
+                  )}
+                  {onOpenEmergency && (
+                    <button
+                      onClick={onOpenEmergency}
+                      className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-[10px] font-mono text-red-300 transition-colors flex items-center gap-1"
+                      title="Emergency Mode"
+                    >
+                      <span>🚨</span>
+                      <span>Emergency</span>
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </>
