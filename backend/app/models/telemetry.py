@@ -35,6 +35,14 @@ class TelemetryReading(Base):
         ),
         Index("ix_telemetry_readings_channel_observed", "channel_id", "observed_at"),
         Index("ix_telemetry_readings_station_observed", "station_id", "observed_at"),
+        # Natural key for duplicate detection. Includes observed_at (the
+        # TimescaleDB partitioning column) so it stays valid on a hypertable.
+        Index(
+            "uq_telemetry_readings_natural_key",
+            "channel_id", "observed_at", "provenance", "source",
+            unique=True,
+        ),
+        Index("ix_telemetry_readings_event_id", "event_id"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -63,4 +71,11 @@ class TelemetryReading(Base):
     quality: Mapped[Quality] = mapped_column(str_enum(Quality, "quality"), nullable=False)
     source: Mapped[str] = mapped_column(
         String(128), nullable=False, comment="Producer identifier, e.g. 'seed:synthetic-v1'"
+    )
+    # ---- Phase 4A ingestion metadata (nullable: seed/legacy rows have none) ----
+    event_id: Mapped[str | None] = mapped_column(
+        String(96), nullable=True, comment="Producer-assigned idempotency key (TelemetryEvent.event_id)"
+    )
+    ingest_flags: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, comment="Comma-separated: OUT_OF_ORDER, DELAYED, GAP_MARKER"
     )

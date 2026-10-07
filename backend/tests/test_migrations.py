@@ -19,7 +19,7 @@ def test_alembic_upgrade_and_downgrade():
         alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
         alembic_cfg.attributes["database_url"] = sqlite_url
 
-        # Upgrade to head
+        # Upgrade to head (including 0001, 0002, 0003)
         command.upgrade(alembic_cfg, "head")
 
         engine = create_engine(sqlite_url)
@@ -31,13 +31,16 @@ def test_alembic_upgrade_and_downgrade():
             "assets",
             "telemetry_channels",
             "telemetry_readings",
+            "twin_alerts",
+            "twin_events",
+            "audit_events",
         } <= tables
 
         # Downgrade to base
         command.downgrade(alembic_cfg, "base")
         inspector_after = inspect(engine)
         remaining = set(inspector_after.get_table_names())
-        assert not ({"stations", "buildings", "assets", "telemetry_readings"} & remaining)
+        assert not ({"stations", "buildings", "assets", "telemetry_readings", "twin_alerts", "twin_events", "audit_events"} & remaining)
     finally:
         try:
             Path(db_path).unlink(missing_ok=True)
